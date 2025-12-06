@@ -1,0 +1,189 @@
+-- =================================================================================================
+--  UILIB | Post-Processing Controller v2
+-- =================================================================================================
+
+-- Step 1: Load the Library
+local UILIB = loadstring(
+    game:HttpGet(
+        'https://raw.githubusercontent.com/DozeIsOkLol/LibWare/refs/heads/main/testing/Library/Source.lua'
+    )
+)()
+
+-- Helper function to map a value from one range to another
+local function MapRange(value, inMin, inMax, outMin, outMax)
+    return outMin + (outMax - outMin) * (value - inMin) / (inMax - inMin)
+end
+
+-- Step 2: Create the Main Window
+local Window = UILIB:CreateWindow({
+    Title = 'Post-Processing Controller',
+    Version = 'v2.0',
+})
+
+-- Step 3: Create Tabs
+local MainTab = Window:CreateTab('Main (Custom Settings)')
+local ShadersTab = Window:CreateTab('Shaders (Presets)')
+
+----------------------------------------------------
+-- Main Tab (Custom Settings)
+----------------------------------------------------
+
+MainTab:AddLabel('Custom Post-Processing Settings')
+MainTab:AddParagraph(
+    'Use the sliders (1-255) below to fine-tune the lighting properties in real-time.'
+)
+
+-- Ensure necessary effects exist in Lighting
+local lighting = game:GetService('Lighting')
+local colorCorrection = lighting:FindFirstChildOfClass('ColorCorrectionEffect') or Instance.new('ColorCorrectionEffect', lighting)
+local bloom = lighting:FindFirstChildOfClass('BloomEffect') or Instance.new('BloomEffect', lighting)
+local sunRays = lighting:FindFirstChildOfClass('SunRaysEffect') or Instance.new('SunRaysEffect', lighting)
+
+-- Sliders now use a 1-255 range and map to the correct effect range.
+MainTab:AddSlider({
+    Name = 'Brightness',
+    Min = 1,
+    Max = 255,
+    Default = MapRange(lighting.Brightness, 0, 2, 1, 255), -- Map default to 1-255
+    Callback = function(value)
+        lighting.Brightness = MapRange(value, 1, 255, 0, 2) -- Map 1-255 to 0-2
+    end,
+})
+
+MainTab:AddSlider({
+    Name = 'Contrast',
+    Min = 1,
+    Max = 255,
+    Default = MapRange(colorCorrection.Contrast, -1, 1, 1, 255),
+    Callback = function(value)
+        colorCorrection.Contrast = MapRange(value, 1, 255, -1, 1) -- Map 1-255 to -1 to 1
+    end,
+})
+
+MainTab:AddSlider({
+    Name = 'Saturation',
+    Min = 1,
+    Max = 255,
+    Default = MapRange(colorCorrection.Saturation, -1, 1, 1, 255),
+    Callback = function(value)
+        colorCorrection.Saturation = MapRange(value, 1, 255, -1, 1) -- Map 1-255 to -1 to 1
+    end,
+})
+
+MainTab:AddSlider({
+    Name = 'Bloom Intensity',
+    Min = 1,
+    Max = 255,
+    Default = MapRange(bloom.Intensity, 0, 2, 1, 255),
+    Callback = function(value)
+        bloom.Intensity = MapRange(value, 1, 255, 0, 2) -- Map 1-255 to 0-2
+    end,
+})
+
+MainTab:AddSlider({
+    Name = 'Sun Rays Intensity',
+    Min = 1,
+    Max = 255,
+    Default = MapRange(sunRays.Intensity, 0, 1, 1, 255),
+    Callback = function(value)
+        sunRays.Intensity = MapRange(value, 1, 255, 0, 1) -- Map 1-255 to 0-1
+    end,
+})
+
+----------------------------------------------------
+-- Shaders Tab (Presets)
+----------------------------------------------------
+
+ShadersTab:AddLabel('Shader Presets')
+ShadersTab:AddParagraph('Select a preset to apply a pre-configured set of lighting effects. Only one can be active at a time.')
+
+local activeShader = nil
+
+local function ActiveShader(shaderName, settings)
+    if activeShader == shaderName then
+        activeShader = nil
+        UILIB:Notify({ Title = 'Shaders', Text = 'Preset deactivated. Custom settings restored.', Duration = 3 })
+        -- Note: When deactivated, it leaves the current settings as they are, allowing for tweaking.
+    else
+        activeShader = shaderName
+        UILIB:Notify({ Title = 'Shaders', Text = 'Preset applied: ' .. shaderName, Duration = 3 })
+
+        -- Apply preset settings
+        lighting.Brightness = settings.Brightness
+        colorCorrection.Contrast = settings.Contrast
+        colorCorrection.Saturation = settings.Saturation
+        bloom.Intensity = settings.BloomIntensity
+        sunRays.Intensity = settings.SunRaysIntensity
+
+        -- Update slider positions to reflect the preset, mapping back to 1-255
+        MainTab.Children[3]:SetValue(MapRange(settings.Brightness, 0, 2, 1, 255))
+        MainTab.Children[4]:SetValue(MapRange(settings.Contrast, -1, 1, 1, 255))
+        MainTab.Children[5]:SetValue(MapRange(settings.Saturation, -1, 1, 1, 255))
+        MainTab.Children[6]:SetValue(MapRange(settings.BloomIntensity, 0, 2, 1, 255))
+        MainTab.Children[7]:SetValue(MapRange(settings.SunRaysIntensity, 0, 1, 1, 255))
+    end
+end
+
+-- Original Presets
+ShadersTab:AddButton({
+    Name = 'Glossy',
+    Callback = function()
+        ActiveShader('Glossy', {
+            Brightness = 1.2, Contrast = 0.2, Saturation = 0.3, BloomIntensity = 1.5, SunRaysIntensity = 0.25,
+        })
+    end,
+})
+
+ShadersTab:AddButton({
+    Name = 'Vintage',
+    Callback = function()
+        ActiveShader('Vintage', {
+            Brightness = 0.8, Contrast = -0.1, Saturation = -0.5, BloomIntensity = 0.2, SunRaysIntensity = 0.1,
+        })
+    end,
+})
+
+ShadersTab:AddButton({
+    Name = 'Neon',
+    Callback = function()
+        ActiveShader('Neon', {
+            Brightness = 1.5, Contrast = 0.4, Saturation = 0.6, BloomIntensity = 2.0, SunRaysIntensity = 0.5,
+        })
+    end,
+})
+
+-- New Presets
+ShadersTab:AddButton({
+    Name = 'Horror',
+    Callback = function()
+        ActiveShader('Horror', {
+            Brightness = 0.6, Contrast = 0.5, Saturation = -0.8, BloomIntensity = 0.5, SunRaysIntensity = 0.05,
+        })
+    end,
+})
+
+ShadersTab:AddButton({
+    Name = 'Cinematic',
+    Callback = function()
+        ActiveShader('Cinematic', {
+            Brightness = 1.0, Contrast = 0.15, Saturation = -0.2, BloomIntensity = 0.6, SunRaysIntensity = 0.1,
+        })
+    end,
+})
+
+ShadersTab:AddButton({
+    Name = 'Desert',
+    Callback = function()
+        ActiveShader('Desert', {
+            Brightness = 1.8, Contrast = 0.1, Saturation = 0.2, BloomIntensity = 0.4, SunRaysIntensity = 0.8,
+        })
+    end,
+})
+
+-- Initial welcome notification
+task.wait(1)
+UILIB:Notify({
+    Title = 'Post-Processing Controller Loaded',
+    Text = 'Ready to customize your lighting.',
+    Duration = 5,
+})

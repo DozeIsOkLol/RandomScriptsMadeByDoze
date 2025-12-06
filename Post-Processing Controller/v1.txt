@@ -1,0 +1,182 @@
+-- =================================================================================================
+--  UILIB | Post-Processing Controller
+-- =================================================================================================
+
+-- Step 1: Load the Library
+local UILIB = loadstring(
+    game:HttpGet(
+        'https://raw.githubusercontent.com/DozeIsOkLol/LibWare/refs/heads/main/testing/Library/Source.lua'
+    )
+)()
+
+-- Step 2: Create the Main Window
+local Window = UILIB:CreateWindow({
+    Title = 'Post-Processing Controller',
+    Version = 'v1.0',
+})
+
+-- Step 3: Create Tabs
+local MainTab = Window:CreateTab('Main (Custom Settings)')
+local ShadersTab = Window:CreateTab('Shaders (Presets)')
+
+----------------------------------------------------
+-- Main Tab (Custom Settings)
+----------------------------------------------------
+
+MainTab:AddLabel('Custom Post-Processing Settings')
+MainTab:AddParagraph(
+    'Use the sliders below to fine-tune the lighting properties in real-time.'
+)
+
+-- Ensure necessary effects exist in Lighting
+local lighting = game:GetService('Lighting')
+local colorCorrection = lighting:FindFirstChildOfClass('ColorCorrectionEffect') or Instance.new('ColorCorrectionEffect', lighting)
+local bloom = lighting:FindFirstChildOfClass('BloomEffect') or Instance.new('BloomEffect', lighting)
+local sunRays = lighting:FindFirstChildOfClass('SunRaysEffect') or Instance.new('SunRaysEffect', lighting)
+
+-- Function to apply custom settings
+local function ApplyCustom()
+    -- This function is implicitly called by the sliders' callbacks
+end
+
+MainTab:AddSlider({
+    Name = 'Brightness',
+    Min = 0,
+    Max = 2,
+    Default = lighting.Brightness,
+    Callback = function(value)
+        lighting.Brightness = value
+        ApplyCustom()
+    end,
+})
+
+MainTab:AddSlider({
+    Name = 'Contrast',
+    Min = -1,
+    Max = 1,
+    Default = colorCorrection.Contrast,
+    Callback = function(value)
+        colorCorrection.Contrast = value
+        ApplyCustom()
+    end,
+})
+
+MainTab:AddSlider({
+    Name = 'Saturation',
+    Min = -1,
+    Max = 1,
+    Default = colorCorrection.Saturation,
+    Callback = function(value)
+        colorCorrection.Saturation = value
+        ApplyCustom()
+    end,
+})
+
+MainTab:AddSlider({
+    Name = 'Bloom Intensity',
+    Min = 0,
+    Max = 2,
+    Default = bloom.Intensity,
+    Callback = function(value)
+        bloom.Intensity = value
+        ApplyCustom()
+    end,
+})
+
+MainTab:AddSlider({
+    Name = 'Sun Rays Intensity',
+    Min = 0,
+    Max = 1,
+    Default = sunRays.Intensity,
+    Callback = function(value)
+        sunRays.Intensity = value
+        ApplyCustom()
+    end,
+})
+
+----------------------------------------------------
+-- Shaders Tab (Presets)
+----------------------------------------------------
+
+ShadersTab:AddLabel('Shader Presets')
+ShadersTab:AddParagraph('Select a preset to apply a pre-configured set of lighting effects. Only one can be active at a time.')
+
+local activeShader = nil
+
+local function ActiveShader(shaderName, settings)
+    if activeShader == shaderName then
+        -- Deselect the current shader and revert to default/custom settings
+        activeShader = nil
+        UILIB:Notify({ Title = 'Shaders', Text = 'Preset deactivated. Reverting to custom settings.', Duration = 3 })
+        -- Re-apply custom settings from sliders
+        lighting.Brightness = MainTab.Children[3].Value
+        colorCorrection.Contrast = MainTab.Children[4].Value
+        colorCorrection.Saturation = MainTab.Children[5].Value
+        bloom.Intensity = MainTab.Children[6].Value
+        sunRays.Intensity = MainTab.Children[7].Value
+    else
+        activeShader = shaderName
+        UILIB:Notify({ Title = 'Shaders', Text = 'Preset applied: ' .. shaderName, Duration = 3 })
+        
+        -- Apply preset settings
+        lighting.Brightness = settings.Brightness
+        colorCorrection.Contrast = settings.Contrast
+        colorCorrection.Saturation = settings.Saturation
+        bloom.Intensity = settings.BloomIntensity
+        sunRays.Intensity = settings.SunRaysIntensity
+        
+        -- Update slider positions to reflect the preset
+        MainTab.Children[3]:SetValue(settings.Brightness)
+        MainTab.Children[4]:SetValue(settings.Contrast)
+        MainTab.Children[5]:SetValue(settings.Saturation)
+        MainTab.Children[6]:SetValue(settings.BloomIntensity)
+        MainTab.Children[7]:SetValue(settings.SunRaysIntensity)
+    end
+end
+
+ShadersTab:AddButton({
+    Name = 'Glossy',
+    Callback = function()
+        ActiveShader('Glossy', {
+            Brightness = 1.2,
+            Contrast = 0.2,
+            Saturation = 0.3,
+            BloomIntensity = 1.5,
+            SunRaysIntensity = 0.25,
+        })
+    end,
+})
+
+ShadersTab:AddButton({
+    Name = 'Vintage',
+    Callback = function()
+        ActiveShader('Vintage', {
+            Brightness = 0.8,
+            Contrast = -0.1,
+            Saturation = -0.5,
+            BloomIntensity = 0.2,
+            SunRaysIntensity = 0.1,
+        })
+    end,
+})
+
+ShadersTab:AddButton({
+    Name = 'Neon',
+    Callback = function()
+        ActiveShader('Neon', {
+            Brightness = 1.5,
+            Contrast = 0.4,
+            Saturation = 0.6,
+            BloomIntensity = 2,
+            SunRaysIntensity = 0.5,
+        })
+    end,
+})
+
+-- Initial welcome notification
+task.wait(1)
+UILIB:Notify({
+    Title = 'Post-Processing Controller Loaded',
+    Text = 'Ready to customize your lighting.',
+    Duration = 5,
+})

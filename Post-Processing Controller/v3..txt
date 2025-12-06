@@ -1,0 +1,251 @@
+-- =================================================================================================
+--  UILIB | Ultimate Post-Processing Suite v3
+-- =================================================================================================
+
+-- Step 1: Load the Library and Services
+local UILIB = loadstring(game:HttpGet('https://raw.githubusercontent.com/DozeIsOkLol/LibWare/refs/heads/main/testing/Library/Source.lua'))()
+local TweenService = game:GetService('TweenService')
+local Lighting = game:GetService('Lighting')
+
+-- Helper function to map a value from one range to another
+local function MapRange(value, inMin, inMax, outMin, outMax)
+    return outMin + (outMax - outMin) * (value - inMin) / (inMax - inMin)
+end
+
+-- Step 2: Create the Main Window
+local Window = UILIB:CreateWindow({
+    Title = 'Post-Processing Suite',
+    Version = 'v3.0',
+})
+
+-- Step 3: Create Tabs
+local MainTab = Window:CreateTab('Main Settings')
+local EffectsTab = Window:CreateTab('Effects')
+local AtmosphereTab = Window:CreateTab('Atmosphere & Color')
+local ShadersTab = Window:CreateTab('Shader Presets')
+local UserPresetsTab = Window:CreateTab('User Presets')
+local AmbiencesTab = Window:CreateTab('Ambiences')
+
+----------------------------------------------------
+-- Effect Management (Ensures they exist)
+----------------------------------------------------
+local colorCorrection = Lighting:FindFirstChildOfClass('ColorCorrectionEffect') or Instance.new('ColorCorrectionEffect', Lighting)
+local bloom = Lighting:FindFirstChildOfClass('BloomEffect') or Instance.new('BloomEffect', Lighting)
+local sunRays = Lighting:FindFirstChildOfClass('SunRaysEffect') or Instance.new('SunRaysEffect', Lighting)
+local blur = Lighting:FindFirstChildOfClass('BlurEffect') or Instance.new('BlurEffect', Lighting)
+local depthOfField = Lighting:FindFirstChildOfClass('DepthOfFieldEffect') or Instance.new('DepthOfFieldEffect', Lighting)
+local atmosphere = Lighting:FindFirstChildOfClass('Atmosphere') or Instance.new('Atmosphere', Lighting)
+
+-- Store all UI control elements for easy access later
+local controls = {}
+
+----------------------------------------------------
+-- Main Tab (Core Settings & Reset)
+----------------------------------------------------
+MainTab:AddLabel('Core Lighting Properties')
+controls.Brightness = MainTab:AddSlider({Name = 'Brightness', Min = 1, Max = 255, Default = MapRange(Lighting.Brightness, 0, 2, 1, 255), Callback = function(v) Lighting.Brightness = MapRange(v, 1, 255, 0, 2) end})
+controls.Contrast = MainTab:AddSlider({Name = 'Contrast', Min = 1, Max = 255, Default = MapRange(colorCorrection.Contrast, -1, 1, 1, 255), Callback = function(v) colorCorrection.Contrast = MapRange(v, 1, 255, -1, 1) end})
+controls.Saturation = MainTab:AddSlider({Name = 'Saturation', Min = 1, Max = 255, Default = MapRange(colorCorrection.Saturation, -1, 1, 1, 255), Callback = function(v) colorCorrection.Saturation = MapRange(v, 1, 255, -1, 1) end})
+
+MainTab:AddParagraph('')
+MainTab:AddButton({
+    Name = 'Reset All to Default',
+    Callback = function()
+        local defaults = {
+            Brightness = 2, Contrast = 0, Saturation = 0, TintColor = Color3.new(1, 1, 1),
+            BloomIntensity = 0.5, SunRaysIntensity = 0.1, BlurSize = 0, DofEnabled = false,
+            DofFocus = 100, DofFar = 0.1, DofNear = 0, AtmosHaze = 0, AtmosDensity = 0.35,
+        }
+        -- Apply defaults
+        Lighting.Brightness = defaults.Brightness
+        colorCorrection.Contrast = defaults.Contrast
+        colorCorrection.Saturation = defaults.Saturation
+        colorCorrection.TintColor = defaults.TintColor
+        bloom.Intensity = defaults.BloomIntensity
+        sunRays.Intensity = defaults.SunRaysIntensity
+        blur.Size = defaults.BlurSize
+        depthOfField.Enabled = defaults.DofEnabled
+        depthOfField.FocusDistance = defaults.DofFocus
+        depthOfField.FarIntensity = defaults.DofFar
+        depthOfField.NearIntensity = defaults.DofNear
+        atmosphere.Haze = defaults.AtmosHaze
+        atmosphere.Density = defaults.AtmosDensity
+
+        -- Update sliders
+        controls.Brightness:SetValue(MapRange(defaults.Brightness, 0, 2, 1, 255))
+        controls.Contrast:SetValue(MapRange(defaults.Contrast, -1, 1, 1, 255))
+        controls.Saturation:SetValue(MapRange(defaults.Saturation, -1, 1, 1, 255))
+        controls.TintColorR:SetValue(defaults.TintColor.R * 255)
+        controls.TintColorG:SetValue(defaults.TintColor.G * 255)
+        controls.TintColorB:SetValue(defaults.TintColor.B * 255)
+        controls.BloomIntensity:SetValue(MapRange(defaults.BloomIntensity, 0, 2, 1, 255))
+        controls.SunRaysIntensity:SetValue(MapRange(defaults.SunRaysIntensity, 0, 1, 1, 255))
+        controls.BlurSize:SetValue(MapRange(defaults.BlurSize, 0, 24, 1, 255))
+        controls.DofEnabled:SetValue(defaults.DofEnabled)
+        controls.DofFocus:SetValue(MapRange(defaults.DofFocus, 0, 1000, 1, 255))
+        controls.DofFar:SetValue(MapRange(defaults.DofFar, 0, 1, 1, 255))
+        controls.DofNear:SetValue(MapRange(defaults.DofNear, 0, 1, 1, 255))
+        controls.AtmosHaze:SetValue(MapRange(defaults.AtmosHaze, 0, 5, 1, 255))
+        controls.AtmosDensity:SetValue(MapRange(defaults.AtmosDensity, 0, 1, 1, 255))
+        
+        UILIB:Notify({Title = 'System', Text = 'All settings have been reset to default.', Duration = 4})
+    end,
+})
+
+----------------------------------------------------
+-- Effects Tab
+----------------------------------------------------
+EffectsTab:AddLabel('Bloom & Sun Rays')
+controls.BloomIntensity = EffectsTab:AddSlider({Name = 'Bloom Intensity', Min = 1, Max = 255, Default = MapRange(bloom.Intensity, 0, 2, 1, 255), Callback = function(v) bloom.Intensity = MapRange(v, 1, 255, 0, 2) end})
+controls.SunRaysIntensity = EffectsTab:AddSlider({Name = 'Sun Rays Intensity', Min = 1, Max = 255, Default = MapRange(sunRays.Intensity, 0, 1, 1, 255), Callback = function(v) sunRays.Intensity = MapRange(v, 1, 255, 0, 1) end})
+
+EffectsTab:AddLabel('Blur')
+controls.BlurSize = EffectsTab:AddSlider({Name = 'Blur Size', Min = 1, Max = 255, Default = MapRange(blur.Size, 0, 24, 1, 255), Callback = function(v) blur.Size = MapRange(v, 1, 255, 0, 24) end})
+
+EffectsTab:AddLabel('Depth of Field')
+controls.DofEnabled = EffectsTab:AddToggle({Name = 'Enable Depth of Field', Default = depthOfField.Enabled, Callback = function(v) depthOfField.Enabled = v end})
+controls.DofFocus = EffectsTab:AddSlider({Name = 'Focus Distance', Min = 1, Max = 255, Default = MapRange(depthOfField.FocusDistance, 0, 1000, 1, 255), Callback = function(v) depthOfField.FocusDistance = MapRange(v, 1, 255, 0, 1000) end})
+controls.DofFar = EffectsTab:AddSlider({Name = 'Far Intensity', Min = 1, Max = 255, Default = MapRange(depthOfField.FarIntensity, 0, 1, 1, 255), Callback = function(v) depthOfField.FarIntensity = MapRange(v, 1, 255, 0, 1) end})
+controls.DofNear = EffectsTab:AddSlider({Name = 'Near Intensity', Min = 1, Max = 255, Default = MapRange(depthOfField.NearIntensity, 0, 1, 1, 255), Callback = function(v) depthOfField.NearIntensity = MapRange(v, 1, 255, 0, 1) end})
+
+----------------------------------------------------
+-- Atmosphere & Color Tab
+----------------------------------------------------
+AtmosphereTab:AddLabel('Atmosphere Controls')
+controls.AtmosHaze = AtmosphereTab:AddSlider({Name = 'Haze', Min = 1, Max = 255, Default = MapRange(atmosphere.Haze, 0, 5, 1, 255), Callback = function(v) atmosphere.Haze = MapRange(v, 1, 255, 0, 5) end})
+controls.AtmosDensity = AtmosphereTab:AddSlider({Name = 'Density', Min = 1, Max = 255, Default = MapRange(atmosphere.Density, 0, 1, 1, 255), Callback = function(v) atmosphere.Density = MapRange(v, 1, 255, 0, 1) end})
+
+AtmosphereTab:AddLabel('Color Correction Tint')
+local function updateTintColor()
+    colorCorrection.TintColor = Color3.new(controls.TintColorR.Value / 255, controls.TintColorG.Value / 255, controls.TintColorB.Value / 255)
+end
+controls.TintColorR = AtmosphereTab:AddSlider({Name = 'Red', Min = 0, Max = 255, Default = colorCorrection.TintColor.R * 255, Callback = updateTintColor})
+controls.TintColorG = AtmosphereTab:AddSlider({Name = 'Green', Min = 0, Max = 255, Default = colorCorrection.TintColor.G * 255, Callback = updateTintColor})
+controls.TintColorB = AtmosphereTab:AddSlider({Name = 'Blue', Min = 0, Max = 255, Default = colorCorrection.TintColor.B * 255, Callback = updateTintColor})
+
+----------------------------------------------------
+-- Preset & Tweening Logic
+----------------------------------------------------
+local activeShader = nil
+local tweenInfo = TweenInfo.new(1.0, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+
+local function ApplyPreset(settings)
+    -- Create and play tweens for each property
+    TweenService:Create(Lighting, tweenInfo, {Brightness = settings.Brightness}):Play()
+    TweenService:Create(colorCorrection, tweenInfo, {Contrast = settings.Contrast, Saturation = settings.Saturation, TintColor = settings.TintColor}):Play()
+    TweenService:Create(bloom, tweenInfo, {Intensity = settings.BloomIntensity}):Play()
+    TweenService:Create(sunRays, tweenInfo, {Intensity = settings.SunRaysIntensity}):Play()
+    TweenService:Create(blur, tweenInfo, {Size = settings.BlurSize}):Play()
+    TweenService:Create(depthOfField, tweenInfo, {FocusDistance = settings.DofFocus, FarIntensity = settings.DofFar, NearIntensity = settings.DofNear}):Play()
+    TweenService:Create(atmosphere, tweenInfo, {Haze = settings.AtmosHaze, Density = settings.AtmosDensity}):Play()
+    depthOfField.Enabled = settings.DofEnabled
+
+    -- Update UI controls to reflect the new values
+    controls.Brightness:SetValue(MapRange(settings.Brightness, 0, 2, 1, 255))
+    controls.Contrast:SetValue(MapRange(settings.Contrast, -1, 1, 1, 255))
+    controls.Saturation:SetValue(MapRange(settings.Saturation, -1, 1, 1, 255))
+    controls.TintColorR:SetValue(settings.TintColor.R * 255)
+    controls.TintColorG:SetValue(settings.TintColor.G * 255)
+    controls.TintColorB:SetValue(settings.TintColor.B * 255)
+    controls.BloomIntensity:SetValue(MapRange(settings.BloomIntensity, 0, 2, 1, 255))
+    controls.SunRaysIntensity:SetValue(MapRange(settings.SunRaysIntensity, 0, 1, 1, 255))
+    controls.BlurSize:SetValue(MapRange(settings.BlurSize, 0, 24, 1, 255))
+    controls.DofEnabled:SetValue(settings.DofEnabled)
+    controls.DofFocus:SetValue(MapRange(settings.DofFocus, 0, 1000, 1, 255))
+    controls.DofFar:SetValue(MapRange(settings.DofFar, 0, 1, 1, 255))
+    controls.DofNear:SetValue(MapRange(settings.DofNear, 0, 1, 1, 255))
+    controls.AtmosHaze:SetValue(MapRange(settings.AtmosHaze, 0, 5, 1, 255))
+    controls.AtmosDensity:SetValue(MapRange(settings.AtmosDensity, 0, 1, 1, 255))
+end
+
+local function ActiveShader(shaderName, settings)
+    if activeShader == shaderName then
+        activeShader = nil
+        UILIB:Notify({Title = 'Shaders', Text = 'Preset deactivated. You can now tweak settings freely.', Duration = 3})
+    else
+        activeShader = shaderName
+        UILIB:Notify({Title = 'Shaders', Text = 'Applying preset: ' .. shaderName, Duration = 3})
+        ApplyPreset(settings)
+    end
+end
+
+-- Default preset values expanded to include all new effects
+local presets = {
+    Glossy = {Brightness=1.2, Contrast=0.2, Saturation=0.3, BloomIntensity=1.5, SunRaysIntensity=0.25, TintColor=Color3.new(1,1,1), BlurSize=0, DofEnabled=false, DofFocus=100, DofFar=0, DofNear=0, AtmosHaze=0, AtmosDensity=0.35},
+    Vintage = {Brightness=0.9, Contrast=-0.1, Saturation=-0.5, BloomIntensity=0.2, SunRaysIntensity=0.1, TintColor=Color3.fromRGB(255, 230, 200), BlurSize=0, DofEnabled=false, DofFocus=100, DofFar=0, DofNear=0, AtmosHaze=0.1, AtmosDensity=0.4},
+    Neon = {Brightness=1.5, Contrast=0.4, Saturation=0.6, BloomIntensity=2.0, SunRaysIntensity=0.5, TintColor=Color3.new(1,1,1), BlurSize=0, DofEnabled=false, DofFocus=100, DofFar=0, DofNear=0, AtmosHaze=0, AtmosDensity=0.2},
+    Horror = {Brightness=0.6, Contrast=0.5, Saturation=-0.8, BloomIntensity=0.5, SunRaysIntensity=0.05, TintColor=Color3.fromRGB(180, 200, 255), BlurSize=2, DofEnabled=true, DofFocus=50, DofFar=0.5, DofNear=0.1, AtmosHaze=2, AtmosDensity=0.8},
+    Cinematic = {Brightness=1.0, Contrast=0.15, Saturation=-0.2, BloomIntensity=0.6, SunRaysIntensity=0.1, TintColor=Color3.new(1,1,1), BlurSize=0, DofEnabled=true, DofFocus=25, DofFar=0.2, DofNear=0, AtmosHaze=0.5, AtmosDensity=0.5},
+    Desert = {Brightness=1.4, Contrast=0.1, Saturation=0.2, BloomIntensity=0.4, SunRaysIntensity=0.8, TintColor=Color3.fromRGB(255, 220, 180), BlurSize=0, DofEnabled=false, DofFocus=100, DofFar=0, DofNear=0, AtmosHaze=1, AtmosDensity=0.2},
+}
+
+ShadersTab:AddLabel('Built-in Shader Presets')
+for name, settings in pairs(presets) do
+    ShadersTab:AddButton({Name = name, Callback = function() ActiveShader(name, settings) end})
+end
+
+----------------------------------------------------
+-- User Presets Tab
+----------------------------------------------------
+local userPresets = {}
+local presetContainer = UserPresetsTab:AddContainer() -- A container to hold the preset buttons
+
+UserPresetsTab:AddLabel('Save & Load Custom Presets')
+local presetNameBox = UserPresetsTab:AddTextbox({Name = 'Preset Name', Placeholder = 'Enter a name...'})
+UserPresetsTab:AddButton({
+    Name = 'Save Current Settings',
+    Callback = function()
+        local name = presetNameBox.Value
+        if name and name ~= '' and not userPresets[name] then
+            userPresets[name] = {
+                Brightness = Lighting.Brightness, Contrast = colorCorrection.Contrast, Saturation = colorCorrection.Saturation,
+                TintColor = colorCorrection.TintColor, BloomIntensity = bloom.Intensity, SunRaysIntensity = sunRays.Intensity,
+                BlurSize = blur.Size, DofEnabled = depthOfField.Enabled, DofFocus = depthOfField.FocusDistance,
+                DofFar = depthOfField.FarIntensity, DofNear = depthOfField.NearIntensity, AtmosHaze = atmosphere.Haze, AtmosDensity = atmosphere.Density
+            }
+            -- Add a button to load the new preset
+            presetContainer:AddButton({
+                Name = name,
+                Callback = function()
+                    ActiveShader(name, userPresets[name])
+                end,
+            })
+            UILIB:Notify({Title = 'Presets', Text = 'Saved preset: ' .. name, Duration = 4})
+        else
+            UILIB:Notify({Title = 'Error', Text = 'Please enter a valid and unique name.', Duration = 4})
+        end
+    end,
+})
+
+----------------------------------------------------
+-- Ambiences Tab
+----------------------------------------------------
+AmbiencesTab:AddLabel('Dynamic Looping Effects')
+local horrorLoopActive = false
+controls.HorrorAmbience = AmbiencesTab:AddToggle({
+    Name = 'Flickering Horror Lights',
+    Callback = function(value)
+        horrorLoopActive = value
+        if value then
+            task.spawn(function()
+                local baseBrightness = Lighting.Brightness
+                local baseBloom = bloom.Intensity
+                UILIB:Notify({Title = 'Ambience', Text = 'Horror Ambience Activated.', Duration = 3})
+                while horrorLoopActive do
+                    local flicker = math.random() * 0.4 - 0.2
+                    Lighting.Brightness = baseBrightness + flicker
+                    bloom.Intensity = baseBloom + flicker * 2
+                    task.wait(math.random() * 0.2 + 0.1)
+                end
+                -- Restore when toggled off
+                Lighting.Brightness = baseBrightness
+                bloom.Intensity = baseBloom
+                UILIB:Notify({Title = 'Ambience', Text = 'Horror Ambience Deactivated.', Duration = 3})
+            end)
+        end
+    end,
+})
+
+-- Final welcome notification
+task.wait(1)
+UILIB:Notify({Title = 'Post-Processing Suite Loaded', Text = 'All systems ready.', Duration = 5})

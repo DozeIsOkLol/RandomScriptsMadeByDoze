@@ -1,0 +1,252 @@
+-- =================================================================================================
+--  UILIB | Ultimate Post-Processing Suite v4.2 (Complete & Stable)
+-- =================================================================================================
+
+-- Step 1: Load the Library and Services
+local UILIB = loadstring(game:HttpGet('https://raw.githubusercontent.com/DozeIsOkLol/LibWare/refs/heads/main/testing/Library/Source.lua'))()
+local TweenService = game:GetService('TweenService')
+local Lighting = game:GetService('Lighting')
+
+-- Helper function to map a value from one range to another
+local function MapRange(value, inMin, inMax, outMin, outMax)
+    return outMin + (outMax - outMin) * (value - inMin) / (inMax - inMin)
+end
+
+-- Step 2: Create the Main Window
+local Window = UILIB:CreateWindow({
+    Title = 'Post-Processing Suite',
+    Version = 'v4.2',
+})
+
+-- Step 3: Create Tabs
+local MainTab = Window:CreateTab('Main Settings')
+local EffectsTab = Window:CreateTab('Effects')
+local AtmosphereTab = Window:CreateTab('Atmosphere & Color')
+local ShadersTab = Window:CreateTab('Shader Presets')
+local AmbiencesTab = Window:CreateTab('Ambiences')
+
+----------------------------------------------------
+-- Effect Management (Ensures they exist)
+----------------------------------------------------
+local colorCorrection = Lighting:FindFirstChildOfClass('ColorCorrectionEffect') or Instance.new('ColorCorrectionEffect', Lighting)
+local bloom = Lighting:FindFirstChildOfClass('BloomEffect') or Instance.new('BloomEffect', Lighting)
+local sunRays = Lighting:FindFirstChildOfClass('SunRaysEffect') or Instance.new('SunRaysEffect', Lighting)
+local blur = Lighting:FindFirstChildOfClass('BlurEffect') or Instance.new('BlurEffect', Lighting)
+local depthOfField = Lighting:FindFirstChildOfClass('DepthOfFieldEffect') or Instance.new('DepthOfFieldEffect', Lighting)
+local atmosphere = Lighting:FindFirstChildOfClass('Atmosphere') or Instance.new('Atmosphere', Lighting)
+local sky = Lighting:FindFirstChildOfClass('Sky') or Instance.new('Sky', Lighting)
+
+-- Store all UI control elements and ambience states
+local controls = {}
+local ambienceStates = { dayNightCycle = false, thunderstorm = false, pulsing = false, flickering = false }
+
+----------------------------------------------------
+-- Preset & Tweening Logic (Defined early for Reset button)
+----------------------------------------------------
+local activeShader = nil
+local tweenInfo = TweenInfo.new(1.0, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+
+local function ApplyPreset(settings, useTweening)
+    if useTweening == nil then useTweening = true end -- Default to tweening
+
+    local function apply(inst, prop, val)
+        if useTweening then
+            TweenService:Create(inst, tweenInfo, {[prop] = val}):Play()
+        else
+            inst[prop] = val
+        end
+    end
+
+    apply(Lighting, "Brightness", settings.Brightness)
+    apply(colorCorrection, "Contrast", settings.Contrast)
+    apply(colorCorrection, "Saturation", settings.Saturation)
+    apply(colorCorrection, "TintColor", settings.TintColor)
+    apply(Lighting, "ClockTime", settings.ClockTime)
+    apply(bloom, "Intensity", settings.BloomIntensity)
+    apply(sunRays, "Intensity", settings.SunRaysIntensity)
+    apply(blur, "Size", settings.BlurSize)
+    depthOfField.Enabled = settings.DofEnabled -- Enabled must be set directly
+    apply(depthOfField, "FocusDistance", settings.DofFocus)
+    apply(depthOfField, "FarIntensity", settings.DofFar)
+    apply(depthOfField, "NearIntensity", settings.DofNear)
+    apply(atmosphere, "Haze", settings.AtmosHaze)
+    apply(atmosphere, "Density", settings.AtmosDensity)
+    apply(Lighting, "FogStart", settings.FogStart)
+    apply(Lighting, "FogEnd", settings.FogEnd)
+    apply(Lighting, "FogColor", settings.FogColor)
+end
+
+----------------------------------------------------
+-- Main Tab (Core Settings & Reset)
+----------------------------------------------------
+MainTab:AddLabel('Core Lighting Properties')
+controls.Brightness = MainTab:AddSlider({Name = 'Brightness', Min = 1, Max = 255, Default = MapRange(Lighting.Brightness, 0, 2, 1, 255), Callback = function(v) Lighting.Brightness = MapRange(v, 1, 255, 0, 2) end})
+controls.Contrast = MainTab:AddSlider({Name = 'Contrast', Min = 1, Max = 255, Default = MapRange(colorCorrection.Contrast, -1, 1, 1, 255), Callback = function(v) colorCorrection.Contrast = MapRange(v, 1, 255, -1, 1) end})
+controls.Saturation = MainTab:AddSlider({Name = 'Saturation', Min = 1, Max = 255, Default = MapRange(colorCorrection.Saturation, -1, 1, 1, 255), Callback = function(v) colorCorrection.Saturation = MapRange(v, 1, 255, -1, 1) end})
+
+MainTab:AddParagraph('')
+MainTab:AddButton({
+    Name = 'Reset All to Default',
+    Callback = function()
+        local defaults = {
+            Brightness = 2, Contrast = 0, Saturation = 0, TintColor = Color3.new(1, 1, 1), ClockTime = 14,
+            BloomIntensity = 0.5, SunRaysIntensity = 0.1, BlurSize = 0, DofEnabled = false,
+            DofFocus = 100, DofFar = 0.1, DofNear = 0, AtmosHaze = 0, AtmosDensity = 0.35,
+            FogStart = 0, FogEnd = 100000, FogColor = Color3.new(0.75, 0.75, 0.75)
+        }
+        ApplyPreset(defaults, false) -- Apply instantly without tweening
+        UILIB:Notify({Title = 'System', Text = 'All settings have been reset to default.', Duration = 4})
+    end,
+})
+
+----------------------------------------------------
+-- Effects Tab
+----------------------------------------------------
+EffectsTab:AddLabel('Bloom & Sun Rays')
+controls.BloomIntensity = EffectsTab:AddSlider({Name = 'Bloom Intensity', Min = 1, Max = 255, Default = MapRange(bloom.Intensity, 0, 2, 1, 255), Callback = function(v) bloom.Intensity = MapRange(v, 1, 255, 0, 2) end})
+controls.SunRaysIntensity = EffectsTab:AddSlider({Name = 'Sun Rays Intensity', Min = 1, Max = 255, Default = MapRange(sunRays.Intensity, 0, 1, 1, 255), Callback = function(v) sunRays.Intensity = MapRange(v, 1, 255, 0, 1) end})
+EffectsTab:AddLabel('Blur')
+controls.BlurSize = EffectsTab:AddSlider({Name = 'Blur Size', Min = 1, Max = 255, Default = MapRange(blur.Size, 0, 24, 1, 255), Callback = function(v) blur.Size = MapRange(v, 1, 255, 0, 24) end})
+EffectsTab:AddLabel('Depth of Field')
+controls.DofEnabled = EffectsTab:AddToggle({Name = 'Enable Depth of Field', Default = depthOfField.Enabled, Callback = function(v) depthOfField.Enabled = v end})
+controls.DofFocus = EffectsTab:AddSlider({Name = 'Focus Distance', Min = 1, Max = 255, Default = MapRange(depthOfField.FocusDistance, 0, 1000, 1, 255), Callback = function(v) depthOfField.FocusDistance = MapRange(v, 1, 255, 0, 1000) end})
+controls.DofFar = EffectsTab:AddSlider({Name = 'Far Intensity', Min = 1, Max = 255, Default = MapRange(depthOfField.FarIntensity, 0, 1, 1, 255), Callback = function(v) depthOfField.FarIntensity = MapRange(v, 1, 255, 0, 1) end})
+controls.DofNear = EffectsTab:AddSlider({Name = 'Near Intensity', Min = 1, Max = 255, Default = MapRange(depthOfField.NearIntensity, 0, 1, 1, 255), Callback = function(v) depthOfField.NearIntensity = MapRange(v, 1, 255, 0, 1) end})
+
+----------------------------------------------------
+-- Atmosphere & Color Tab
+----------------------------------------------------
+AtmosphereTab:AddLabel('Time & Sky')
+controls.ClockTime = AtmosphereTab:AddSlider({Name = 'Time of Day', Min = 0, Max = 24, Default = Lighting.ClockTime, Callback = function(v) Lighting.ClockTime = v end})
+local skyboxIdInput = ""
+AtmosphereTab:AddTextbox({Name = "Skybox ID", Placeholder = "rbxassetid://...", Callback = function(t) skyboxIdInput = t end})
+AtmosphereTab:AddButton({Name = "Load Skybox", Callback = function()
+    if skyboxIdInput and (skyboxIdInput:match("rbxassetid") or skyboxIdInput:match("%d+")) then
+        local formattedId = "rbxassetid://" .. skyboxIdInput:match("%d+")
+        sky.SkyboxFt = formattedId; sky.SkyboxBk = formattedId; sky.SkyboxUp = formattedId; sky.SkyboxDn = formattedId; sky.SkyboxLf = formattedId; sky.SkyboxRt = formattedId
+        UILIB:Notify({Title = "Skybox", Text = "Custom skybox loaded.", Duration = 4})
+    else
+        UILIB:Notify({Title = "Error", Text = "Invalid Skybox ID format.", Duration = 4})
+    end
+end})
+
+AtmosphereTab:AddLabel('Atmosphere & Fog')
+controls.AtmosHaze = AtmosphereTab:AddSlider({Name = 'Atmosphere Haze', Min = 0, Max = 5, Default = atmosphere.Haze, Callback = function(v) atmosphere.Haze = v end})
+controls.AtmosDensity = AtmosphereTab:AddSlider({Name = 'Atmosphere Density', Min = 0, Max = 1, Default = atmosphere.Density, Callback = function(v) atmosphere.Density = v end})
+controls.FogStart = AtmosphereTab:AddSlider({Name = 'Fog Start', Min = 0, Max = 1000, Default = Lighting.FogStart, Callback = function(v) Lighting.FogStart = v end})
+controls.FogEnd = AtmosphereTab:AddSlider({Name = 'Fog End', Min = 0, Max = 100000, Default = Lighting.FogEnd, Callback = function(v) Lighting.FogEnd = v end})
+local currentFogColor = {R = Lighting.FogColor.R * 255, G = Lighting.FogColor.G * 255, B = Lighting.FogColor.B * 255}
+local function updateFogColor() Lighting.FogColor = Color3.new(currentFogColor.R/255, currentFogColor.G/255, currentFogColor.B/255) end
+controls.FogColorR = AtmosphereTab:AddSlider({Name = 'Fog Red', Min = 0, Max = 255, Default = currentFogColor.R, Callback = function(v) currentFogColor.R=v; updateFogColor() end})
+controls.FogColorG = AtmosphereTab:AddSlider({Name = 'Fog Green', Min = 0, Max = 255, Default = currentFogColor.G, Callback = function(v) currentFogColor.G=v; updateFogColor() end})
+controls.FogColorB = AtmosphereTab:AddSlider({Name = 'Fog Blue', Min = 0, Max = 255, Default = currentFogColor.B, Callback = function(v) currentFogColor.B=v; updateFogColor() end})
+
+AtmosphereTab:AddLabel('Color Correction Tint')
+local currentTintColor = {R = colorCorrection.TintColor.R * 255, G = colorCorrection.TintColor.G * 255, B = colorCorrection.TintColor.B * 255}
+local function updateTintColor() colorCorrection.TintColor = Color3.new(currentTintColor.R / 255, currentTintColor.G / 255, currentTintColor.B / 255) end
+controls.TintColorR = AtmosphereTab:AddSlider({Name = 'Tint Red', Min = 0, Max = 255, Default = currentTintColor.R, Callback = function(v) currentTintColor.R = v; updateTintColor() end})
+controls.TintColorG = AtmosphereTab:AddSlider({Name = 'Tint Green', Min = 0, Max = 255, Default = currentTintColor.G, Callback = function(v) currentTintColor.G = v; updateTintColor() end})
+controls.TintColorB = AtmosphereTab:AddSlider({Name = 'Tint Blue', Min = 0, Max = 255, Default = currentTintColor.B, Callback = function(v) currentTintColor.B = v; updateTintColor() end})
+
+----------------------------------------------------
+-- Shaders Tab
+----------------------------------------------------
+local presets = {
+    Glossy = {Brightness=1.2, Contrast=0.2, Saturation=0.3, BloomIntensity=1.5, SunRaysIntensity=0.25, TintColor=Color3.new(1,1,1), BlurSize=0, DofEnabled=false, DofFocus=100, DofFar=0, DofNear=0, AtmosHaze=0, AtmosDensity=0.35, ClockTime = 14, FogStart = 0, FogEnd = 100000, FogColor = Lighting.FogColor},
+    Vintage = {Brightness=0.9, Contrast=-0.1, Saturation=-0.5, BloomIntensity=0.2, SunRaysIntensity=0.1, TintColor=Color3.fromRGB(255, 230, 200), BlurSize=0, DofEnabled=false, DofFocus=100, DofFar=0, DofNear=0, AtmosHaze=0.1, AtmosDensity=0.4, ClockTime = 14, FogStart = 0, FogEnd = 100000, FogColor = Lighting.FogColor},
+    Neon = {Brightness=1.5, Contrast=0.4, Saturation=0.6, BloomIntensity=2.0, SunRaysIntensity=0.5, TintColor=Color3.new(1,1,1), BlurSize=0, DofEnabled=false, DofFocus=100, DofFar=0, DofNear=0, AtmosHaze=0, AtmosDensity=0.2, ClockTime = 2, FogStart = 0, FogEnd = 100000, FogColor = Lighting.FogColor},
+    Horror = {Brightness=0.6, Contrast=0.5, Saturation=-0.8, BloomIntensity=0.5, SunRaysIntensity=0.05, TintColor=Color3.fromRGB(180, 200, 255), BlurSize=2, DofEnabled=true, DofFocus=50, DofFar=0.5, DofNear=0.1, AtmosHaze=2, AtmosDensity=0.8, ClockTime = 23, FogStart = 0, FogEnd = 500, FogColor = Color3.new(0,0,0)},
+    Cinematic = {Brightness=1.0, Contrast=0.15, Saturation=-0.2, BloomIntensity=0.6, SunRaysIntensity=0.1, TintColor=Color3.new(1,1,1), BlurSize=0, DofEnabled=true, DofFocus=25, DofFar=0.2, DofNear=0, AtmosHaze=0.5, AtmosDensity=0.5, ClockTime = 16, FogStart = 0, FogEnd = 100000, FogColor = Lighting.FogColor},
+    Desert = {Brightness=1.4, Contrast=0.1, Saturation=0.2, BloomIntensity=0.4, SunRaysIntensity=0.8, TintColor=Color3.fromRGB(255, 220, 180), BlurSize=0, DofEnabled=false, DofFocus=100, DofFar=0, DofNear=0, AtmosHaze=1, AtmosDensity=0.2, ClockTime = 15, FogStart = 100, FogEnd = 5000, FogColor = Color3.fromRGB(255, 220, 180)},
+}
+
+ShadersTab:AddLabel('Built-in Shader Presets')
+for name, settings in pairs(presets) do
+    ShadersTab:AddButton({Name = name, Callback = function()
+        if activeShader == name then
+            activeShader = nil
+            UILIB:Notify({Title = 'Shaders', Text = 'Preset deactivated.', Duration = 3})
+        else
+            activeShader = name
+            UILIB:Notify({Title = 'Shaders', Text = 'Applying preset: ' .. name, Duration = 3})
+            ApplyPreset(settings)
+        end
+    end})
+end
+
+----------------------------------------------------
+-- Ambiences Tab
+----------------------------------------------------
+AmbiencesTab:AddLabel('Dynamic Looping Effects')
+
+local function stopAllAmbiences(except)
+    for name, _ in pairs(ambienceStates) do
+        if name ~= except then ambienceStates[name] = false end
+    end
+    -- This part is tricky with the library, so we'll just rely on the boolean checks
+end
+
+AmbiencesTab:AddToggle({Name = 'Day/Night Cycle', Callback = function(v)
+    ambienceStates.dayNightCycle = v
+    if v then UILIB:Notify({Title="Ambience", Text="Day/Night Cycle started."})
+        task.spawn(function()
+            while ambienceStates.dayNightCycle do Lighting.ClockTime = (Lighting.ClockTime + 0.01) % 24; task.wait() end
+        end)
+    else UILIB:Notify({Title="Ambience", Text="Day/Night Cycle stopped."}) end
+end})
+
+AmbiencesTab:AddToggle({Name = 'Thunderstorm', Callback = function(v)
+    ambienceStates.thunderstorm = v
+    local beforeState = {}
+    if v then UILIB:Notify({Title="Ambience", Text="A storm is brewing..."})
+        beforeState = {Brightness=Lighting.Brightness, ClockTime=Lighting.ClockTime, Haze=atmosphere.Haze, Density=atmosphere.Density, FogEnd = Lighting.FogEnd}
+        ApplyPreset({Brightness=0.5, ClockTime=2, Haze=5, Density=0.8, FogEnd=1000, FogColor=Color3.new(0.1,0.1,0.15)}, true)
+        task.spawn(function()
+            task.wait(3)
+            while ambienceStates.thunderstorm do
+                task.wait(math.random(5, 15))
+                if not ambienceStates.thunderstorm then break end
+                local originalBrightness = Lighting.Brightness
+                Lighting.Brightness = 5; task.wait(0.1); Lighting.Brightness = originalBrightness; task.wait(0.05); Lighting.Brightness = 2; task.wait(0.1); Lighting.Brightness = originalBrightness
+            end
+        end)
+    else
+        UILIB:Notify({Title="Ambience", Text="The storm has passed."})
+        TweenService:Create(Lighting, tweenInfo, {Brightness=beforeState.Brightness, ClockTime=beforeState.ClockTime, FogEnd=beforeState.FogEnd}):Play()
+        TweenService:Create(atmosphere, tweenInfo, {Haze=beforeState.Haze, Density=beforeState.Density}):Play()
+    end
+end})
+
+AmbiencesTab:AddToggle({Name = 'Pulsing Ambience', Callback = function(v)
+    ambienceStates.pulsing = v
+    if v then UILIB:Notify({Title="Ambience", Text="Pulsing effect activated."})
+        task.spawn(function()
+            local baseBrightness, baseBloom = Lighting.Brightness, bloom.Intensity
+            while ambienceStates.pulsing do
+                local pulse = math.sin(tick() * 2) * 0.2
+                Lighting.Brightness = baseBrightness + pulse; bloom.Intensity = baseBloom + pulse
+                task.wait()
+            end
+            Lighting.Brightness, bloom.Intensity = baseBrightness, baseBloom
+        end)
+    else UILIB:Notify({Title="Ambience", Text="Pulsing effect deactivated."}) end
+end})
+
+AmbiencesTab:AddToggle({Name = 'Flickering Horror Lights', Callback = function(v)
+    ambienceStates.flickering = v
+    if v then UILIB:Notify({Title = 'Ambience', Text = 'Horror Ambience Activated.'})
+        task.spawn(function()
+            local baseBrightness, baseBloom = Lighting.Brightness, bloom.Intensity
+            while ambienceStates.flickering do
+                local flicker = math.random() * 0.4 - 0.2
+                Lighting.Brightness = baseBrightness + flicker; bloom.Intensity = baseBloom + flicker * 2
+                task.wait(math.random() * 0.2 + 0.1)
+            end
+            Lighting.Brightness, bloom.Intensity = baseBrightness, baseBloom
+        end)
+    else UILIB:Notify({Title = 'Ambience', Text = 'Horror Ambience Deactivated.'}) end
+end})
+
+-- Final welcome notification
+task.wait(1)
+UILIB:Notify({Title = 'Post-Processing Suite Loaded', Text = 'All systems ready.', Duration = 5})
