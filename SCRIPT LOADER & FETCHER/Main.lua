@@ -38,14 +38,18 @@ if Config.AutoExecute and Config.Verbose then
 end
 
 local finalUrl = originalUrl
-local handlerOrder = { "gist.github.com", "github.com", "gitlab.com", "pastebin.com", "paste.ee", "rentry.co" }
+local handlerOrder = { "gist.github.com", "github.com", "gitlab.com", "bitbucket.org", "pastebin.com", "paste.ee", "rentry.co", "controlc.com", "scriptblox.com", "haxhell.com" }
 local urlHandlers = {
     ["github.com"] = function(url) if not url:match("raw.githubusercontent.com") then return url:gsub("github.com", "raw.githubusercontent.com"):gsub("/blob/", "/") end; return url end,
     ["gist.github.com"] = function(url) if not url:match("gist.githubusercontent.com") then local u, g = url:match("gist.github.com/([^/]+)/([%w%d]+)"); if u and g then return ("https://gist.githubusercontent.com/%s/%s/raw/"):format(u, g) end end; return url end,
     ["gitlab.com"] = function(url) if not url:match("/-/raw/") and url:match("/-/blob/") then return url:gsub("/-/blob/", "/-/raw/") end; return url end,
+    ["bitbucket.org"] = function(url) if url:match("/src/") and not url:match("/raw/") then return url:gsub("/src/", "/raw/") end; return url end,
     ["pastebin.com"] = function(url) if not url:match("/raw/") then local id = url:match("pastebin.com/([%w%d]+)"); if id then return "https://pastebin.com/raw/"..id end end; return url end,
     ["paste.ee"] = function(url) if not url:match("/r/") and url:match("/p/") then return url:gsub("/p/", "/r/") end; return url end,
     ["rentry.co"] = function(url) if not url:match("/raw/") then local id = url:match("rentry.co/([%w%d]+)"); if id then return "https://rentry.co/raw/"..id end end; return url end,
+    ["controlc.com"] = function(url) if not url:match("/download/") then local id = url:match("controlc.com/([%w%d]+)"); if id then return "https://controlc.com/download/"..id end end; return url end,
+    ["scriptblox.com"] = function(url) if not url:match("rawscripts.net") then local path = url:match("scriptblox.com/script/(.+)") if path then return "https://rawscripts.net/raw/" .. path end end return url end,
+    ["haxhell.com"] = function(url) if not url:match("/raw/") and url:match("/script/") then return url:gsub("/script/", "/raw/") end return url end,
 }
 
 for _, domain in ipairs(handlerOrder) do
