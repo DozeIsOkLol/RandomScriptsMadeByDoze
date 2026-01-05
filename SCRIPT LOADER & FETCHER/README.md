@@ -69,9 +69,6 @@ If you use a URL from an unsupported site, it must be a direct link to the raw t
 
 This script began as a simple concept and was iteratively improved into a professional-grade utility through a rigorous process of feedback and refinement. The final version represents a masterclass in defensive programming and user-centric design.
 
--   **Initial Concept:** User
--   **Architectural Refinement & Code Review:** AI Assistant
+-   **Initial Concept:** xenx (https://scriptblox.com/script/Universal-Script-How-To-Get-Almost-ANY-Script-EASILY-81951)
+-   **Architectural Refinement & Code Review:** DOZE/Soulja/UILib
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
