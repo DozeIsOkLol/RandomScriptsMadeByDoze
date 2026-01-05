@@ -62,6 +62,8 @@ The loader will automatically convert standard URLs from the following sites int
 -   **Paste.ee**
 -   **Rentry.co**
 -   **ControlC**
+-   **scriptblox**
+-   **haxhell**
 
 If you use a URL from an unsupported site, it must be a direct link to the raw text content.
 
